@@ -88,7 +88,7 @@ int main(int argc, char **argv){
 	fprintf(f, "#hostname %s\n", hostname);
 	fprintf(f, "#nthreads %d\n", nthreads);
 	fprintf(f, "#memoryGB %lld\n", memr);
-	fprintf(f, "#memoryNode %lld\n", numa_node);
+	fprintf(f, "#memoryNode %d\n", numa_node);
 	fprintf(f, "bench,node,time\n");
 	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
 	{
