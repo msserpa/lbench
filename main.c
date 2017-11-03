@@ -1,14 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
-#include <time.h>
-
-extern int sched_getcpu(void);
 
 int main(int argc, char **argv){
-	FILE *f;
 	int r, *v;
-	long long int i, j, tid, cid, tbegin, tend;
+	long long int i, j, tid, tbegin, tend;
 	long long int max, tmax;
 	long long int mem, memr, tmem, tmemr;
 	int nthreads, page;
@@ -46,62 +42,73 @@ int main(int argc, char **argv){
 		printf("elements allocated per thread: %lld\n\n", tmax);
 	}
 
-
-	f = fopen("log.csv", "w");
-
-	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, tbegin, tend, tstart, tfinish, i, j, r)
+	tstart = omp_get_wtime();
+	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, tbegin, tend, i, r)
 	{
-
 		tid = omp_get_thread_num();
-		#pragma omp critical
-		cid = sched_getcpu();
 		tbegin = tid * tmax;
 		tend = tbegin + tmax;
 
-		fprintf(stderr, "t%lld(%lld) - (%lld, %lld)\n\n", tid, cid, tbegin, tend);
-
 		r = 1;
-
-		tstart = omp_get_wtime();
 		for(i = tbegin; i < tend; i++)
 			v[i] = r;
-		tfinish = omp_get_wtime();
+	}
+	tfinish = omp_get_wtime();
+	fprintf(stdout, "seq_write: \t%lf\n", tfinish - tstart);
+	fprintf(stderr, "%lf\n", tfinish - tstart);
 
-		fprintf(stderr, "t%lld(%lld) seq_write: \t%lf\n", tid, cid, tfinish - tstart);
 
-		tstart = omp_get_wtime();
-		for(i = tbegin; i < tend; i++)
-			r = v[i];
-		tfinish = omp_get_wtime();
-
-		fprintf(stderr, "t%lld(%lld) seq_read: \t%lf\n", tid, cid, tfinish - tstart);
+	tstart = omp_get_wtime();
+	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, tbegin, tend, i, r)
+	{
+		tid = omp_get_thread_num();
+		tbegin = tid * tmax;
+		tend = tbegin + tmax;
 
 		r = 2;
+		for(i = tbegin; i < tend; i++)
+			r = v[i];
+	}
+	tfinish = omp_get_wtime();
+	fprintf(stdout, "seq_read: \t%lf\n", tfinish - tstart);
+	fprintf(stderr, "%lf\n", tfinish - tstart);
+
+	tstart = omp_get_wtime();
+	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, tbegin, tend, i, j, r)
+	{
+		tid = omp_get_thread_num();
+		tbegin = tid * tmax;
+		tend = tbegin + tmax;
 
 		j = 0;
-		tstart = omp_get_wtime();
+		r = 3;
 		for(i = 0; i < tmax; i++){
 			j = tbegin + (i * page) % tmax;
-			if(j < tbegin || j >= tend)
-				printf("%lld - %lld\n", tid, j);
 			v[j] = r;
 		}
-		tfinish = omp_get_wtime();
+	}
+	tfinish = omp_get_wtime();
+	fprintf(stdout, "rand_write: \t%lf\n", tfinish - tstart);
+	fprintf(stderr, "%lf\n", tfinish - tstart);
 
-		fprintf(stderr, "t%lld(%lld) rand_write: \t%lf\n", tid, cid, tfinish - tstart);
-
+	tstart = omp_get_wtime();
+	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, tbegin, tend, i, j, r)
+	{
+		tid = omp_get_thread_num();
+		tbegin = tid * tmax;
+		tend = tbegin + tmax;
+		
 		j = 0;
-		tstart = omp_get_wtime();
+		r = 4;
 		for(i = 0; i < tmax; i++){
 			j = tbegin + (i * page) % tmax;
 			r = v[j];
 		}
-		tfinish = omp_get_wtime();
-
-		fprintf(stderr, "t%lld(%lld) rand_read: \t%lf\n", tid, cid, tfinish - tstart);		
 	}
+	tfinish = omp_get_wtime();
+	fprintf(stdout, "rand_read: \t%lf\n", tfinish - tstart);
+	fprintf(stderr, "%lf\n", tfinish - tstart);
 
-	fclose(f);
 	free(v);
 	return 0;
 }
