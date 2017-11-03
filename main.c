@@ -44,7 +44,8 @@ int main(int argc, char **argv){
 	tmemr = atoll(argv[2]);
 	memr = tmemr * nthreads;
 	
-	tmem = tmemr * 1024 * 1024 * 1024;
+	// tmem = tmemr * 1024 * 1024 * 1024;
+	tmem = tmemr * 1024 * 1024;
 	mem = tmem * nthreads;
 
 	max = mem / sizeof(int);
