@@ -44,7 +44,8 @@ int main(int argc, char **argv){
 	tmemr = atoll(argv[2]);
 	memr = tmemr * nthreads;
 	
-	tmem = tmemr * 1024 * 1024 * 1024;
+	// tmem = tmemr * 1024 * 1024 * 1024;
+	tmem = tmemr * 1024 * 1024;
 	mem = tmem * nthreads;
 
 	max = mem / sizeof(int);
@@ -88,7 +89,7 @@ int main(int argc, char **argv){
 	fprintf(f, "#hostname %s\n", hostname);
 	fprintf(f, "#nthreads %d\n", nthreads);
 	fprintf(f, "#memoryGB %lld\n", memr);
-	fprintf(f, "#memoryNode %lld\n", numa_node);
+	fprintf(f, "#memoryNode %d\n", numa_node);
 	fprintf(f, "bench,node,time\n");
 	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
 	{
