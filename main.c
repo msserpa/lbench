@@ -37,13 +37,13 @@ int main(int argc, char **argv){
 	sprintf(fname, "output/lbench.%s.%s.csv", hostname, hostdate);
 
 	if(argc != 3){
-		fprintf(stderr, "Usage: %s <nthreads> <mem_GB>\n", argv[0]);
+		fprintf(stderr, "Usage: %s <nthreads> <mem_MB>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	nthreads = atoi(argv[1]);
 	
-	memr  = atoll(argv[2]); // GB
-	mem   = memr * 1024 * 1024 * 1024; // B
+	memr  = atoll(argv[2]); // MB
+	mem   = memr * 1024 * 1024; // B
 
 	tmem  = ceil(mem / nthreads / 1024) * 1024; // B
 	tmemr = tmem / 1024 / 1024; // MB
@@ -55,7 +55,7 @@ int main(int argc, char **argv){
 
 	v = (int *) calloc(max, sizeof(int));
 	if(!v){
-		fprintf(stderr, "lbench is not able to allocate %lld GB\n", mem);
+		fprintf(stderr, "lbench is not able to allocate %lld B\n", mem);
 		exit(EXIT_FAILURE);
 	}
 
@@ -65,7 +65,7 @@ int main(int argc, char **argv){
 	printf("Output file: %s\n\n", fname);
 
 	printf("mem numa node: %d\n", numa_node);
-	printf("mem allocated: %lld GB - %lld B\n", memr, mem);
+	printf("mem allocated: %lld MB - %lld B\n", memr, mem);
 	printf("elements allocated: %lld\n", max);
 	printf("nthreads: %d\n\n", nthreads);
 
@@ -88,7 +88,7 @@ int main(int argc, char **argv){
 
 	fprintf(f, "#hostname %s\n", hostname);
 	fprintf(f, "#nthreads %d\n", nthreads);
-	fprintf(f, "#memoryGB %lld\n", memr);
+	fprintf(f, "#memoryMB %lld\n", memr);
 	fprintf(f, "#memoryNode %d\n", numa_node);
 	fprintf(f, "bench,node,time\n");
 	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
