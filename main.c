@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -36,19 +37,19 @@ int main(int argc, char **argv){
 	sprintf(fname, "output/lbench.%s.%s.csv", hostname, hostdate);
 
 	if(argc != 3){
-		fprintf(stderr, "Usage: %s <nthreads> <mem_per_thread_GB>\n", argv[0]);
+		fprintf(stderr, "Usage: %s <nthreads> <mem_GB>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	nthreads = atoi(argv[1]);
 	
-	tmemr = atoll(argv[2]);
-	memr = tmemr * nthreads;
-	
-	tmem = tmemr * 1024 * 1024 * 1024;
-	mem = tmem * nthreads;
+	memr  = atoll(argv[2]); // GB
+	mem   = memr * 1024 * 1024 * 1024; // B
+
+	tmem  = ceil(mem / nthreads / 1024) * 1024; // B
+	tmemr = tmem / 1024 / 1024; // MB
 
 	max = mem / sizeof(int);
-	tmax = max / nthreads;
+	tmax = tmem / sizeof(int);
 
 	page = PAGE_SIZE / sizeof(int);
 
@@ -69,7 +70,7 @@ int main(int argc, char **argv){
 	printf("nthreads: %d\n\n", nthreads);
 
 	if(nthreads > 1){
-		printf("mem allocated per thread: %lld GB - %lld B\n", tmemr, tmem);
+		printf("mem allocated per thread: %lld MB - %lld B\n", tmemr, tmem);
 		printf("elements allocated per thread: %lld\n\n", tmax);
 	}
 

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS = -lnuma -fopenmp -Wall -Wextra
+CFLAGS = -lnuma -lm -fopenmp -Wall -Wextra
 OBJ = main.o
 
 all: lbench
