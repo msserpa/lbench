@@ -36,10 +36,11 @@ int main(int argc, char **argv){
 	gethostname(hostname, HOST_NAME_MAX);
 	sprintf(fname, "output/lbench.%s.%s.csv", hostname, hostdate);
 
-	if(argc != 3){
-		fprintf(stderr, "Usage: %s <nthreads> <mem_MB>\n", argv[0]);
+	if(argc != 4){
+		fprintf(stderr, "Usage: %s <nthreads> <mem_MB> <test>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
+
 	nthreads = atoi(argv[1]);
 	
 	memr  = atoll(argv[2]); // MB
@@ -58,6 +59,7 @@ int main(int argc, char **argv){
 		fprintf(stderr, "lbench is not able to allocate %lld B\n", mem);
 		exit(EXIT_FAILURE);
 	}
+	memset(v, 1, max);
 
 	get_mempolicy(&numa_node, NULL, 0, (void*)v, MPOL_F_NODE | MPOL_F_ADDR);
 
@@ -90,64 +92,115 @@ int main(int argc, char **argv){
 	fprintf(f, "#nthreads %d\n", nthreads);
 	fprintf(f, "#memoryMB %lld\n", memr);
 	fprintf(f, "#memoryNode %d\n", numa_node);
-	fprintf(f, "bench,node,time\n");
-	#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
-	{
+	fprintf(f, "bench,nid,mem,time\n");
 
-		tid = omp_get_thread_num();
-		#pragma omp critical
-		cid = sched_getcpu();
-		nid = numa_node_of_cpu(cid);
-		tbegin = tid * tmax;
-		tend = tbegin + tmax;
+	
+	if(argv[3][0] == '-' && argv[3][1] == 's' && argv[3][2] == 'w'){
+		#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
+		{
 
-		fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+			tid = omp_get_thread_num();
+			#pragma omp critical
+			cid = sched_getcpu();
+			nid = numa_node_of_cpu(cid);
+			tbegin = tid * tmax;
+			tend = tbegin + tmax;
 
-		r = 1;
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
 
-		tstart = omp_get_wtime();
-		for(i = tbegin; i < tend; i++)
-			v[i] = r;
-		tfinish = omp_get_wtime();
+			r = 1;
 
-		fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
-		#pragma omp critical
-		fprintf(f, "seq_write,%d,%lf\n", nid, tfinish - tstart);
+			tstart = omp_get_wtime();
+			for(i = tbegin; i < tend; i++)
+				v[i] = r;
+			tfinish = omp_get_wtime();
 
-		tstart = omp_get_wtime();
-		for(i = tbegin; i < tend; i++)
-			r = v[i];
-		tfinish = omp_get_wtime();
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
 
-		fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
-		#pragma omp critical
-		fprintf(f, "seq_read,%d,%lf\n", nid, tfinish - tstart);
-
-		r = 2;
-
-		j = 0;
-		tstart = omp_get_wtime();
-		for(i = 0; i < tmax; i++){
-			j = tbegin + (i * page) % tmax;
-			v[j] = r;
+			#pragma omp critical
+			fprintf(f, "seq_write,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
 		}
-		tfinish = omp_get_wtime();
+	}else if(argv[3][0] == '-' && argv[3][1] == 's' && argv[3][2] == 'r'){
+		#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
+		{
 
-		fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
-		#pragma omp critical
-		fprintf(f, "rand_write,%d,%lf\n", nid, tfinish - tstart);
+			tid = omp_get_thread_num();
+			#pragma omp critical
+			cid = sched_getcpu();
+			nid = numa_node_of_cpu(cid);
+			tbegin = tid * tmax;
+			tend = tbegin + tmax;
 
-		j = 0;
-		tstart = omp_get_wtime();
-		for(i = 0; i < tmax; i++){
-			j = tbegin + (i * page) % tmax;
-			r = v[j];
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+
+			r = 1;
+
+			tstart = omp_get_wtime();
+			for(i = tbegin; i < tend; i++)
+				r = v[i];
+			tfinish = omp_get_wtime();
+
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
+
+			#pragma omp critical
+			fprintf(f, "seq_read,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
 		}
-		tfinish = omp_get_wtime();
+	}else if(argv[3][0] == '-' && argv[3][1] == 'r' && argv[3][2] == 'w'){
+		#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
+		{
 
-		fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
-		#pragma omp critical
-		fprintf(f, "rand_read,%d,%lf\n", nid, tfinish - tstart);
+			tid = omp_get_thread_num();
+			#pragma omp critical
+			cid = sched_getcpu();
+			nid = numa_node_of_cpu(cid);
+			tbegin = tid * tmax;
+			tend = tbegin + tmax;
+
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+
+			r = 1;
+			j = 0;
+
+			tstart = omp_get_wtime();
+			for(i = 0; i < tmax; i++){
+				j = tbegin + (i * page) % tmax;
+				v[j] = r;
+			}
+			tfinish = omp_get_wtime();
+
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
+
+			#pragma omp critical
+			fprintf(f, "rand_write,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
+		}
+	}else if(argv[3][0] == '-' && argv[3][1] == 'r' && argv[3][2] == 'r'){
+		#pragma omp parallel num_threads(nthreads) default(shared) private(tid, cid, nid, tbegin, tend, tstart, tfinish, i, j, r)
+		{
+
+			tid = omp_get_thread_num();
+			#pragma omp critical
+			cid = sched_getcpu();
+			nid = numa_node_of_cpu(cid);
+			tbegin = tid * tmax;
+			tend = tbegin + tmax;
+
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+
+			r = 1;
+			j = 0;
+
+			tstart = omp_get_wtime();
+			for(i = 0; i < tmax; i++){
+				j = tbegin + (i * page) % tmax;
+				r = v[j];
+			}
+			tfinish = omp_get_wtime();
+
+			fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
+
+			#pragma omp critical
+			fprintf(f, "rand_read,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
+		}
 	}
 
 	fclose(f);
