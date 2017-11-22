@@ -8,7 +8,6 @@
 #include <omp.h>
 #include <numa.h>
 #include <numaif.h>
-
 #ifndef HOST_NAME_MAX
 	#define HOST_NAME_MAX 64
 #endif
@@ -105,18 +104,18 @@ int main(int argc, char **argv){
 			nid = numa_node_of_cpu(cid);
 			tbegin = tid * tmax;
 			tend = tbegin + tmax;
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+			#endif
 			r = 1;
 
 			tstart = omp_get_wtime();
 			for(i = tbegin; i < tend; i++)
 				v[i] = r;
 			tfinish = omp_get_wtime();
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
+			#endif
 			#pragma omp critical
 			fprintf(f, "seq_write,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
 		}
@@ -130,18 +129,18 @@ int main(int argc, char **argv){
 			nid = numa_node_of_cpu(cid);
 			tbegin = tid * tmax;
 			tend = tbegin + tmax;
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+			#endif
 			r = 1;
 
 			tstart = omp_get_wtime();
 			for(i = tbegin; i < tend; i++)
 				r = v[i];
 			tfinish = omp_get_wtime();
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - seq_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
+			#endif
 			#pragma omp critical
 			fprintf(f, "seq_read,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
 		}
@@ -155,9 +154,9 @@ int main(int argc, char **argv){
 			nid = numa_node_of_cpu(cid);
 			tbegin = tid * tmax;
 			tend = tbegin + tmax;
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+			#endif
 			r = 1;
 			j = 0;
 
@@ -167,9 +166,9 @@ int main(int argc, char **argv){
 				v[j] = r;
 			}
 			tfinish = omp_get_wtime();
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_write: \t%lf\n", tid, cid, nid, tfinish - tstart);
+			#endif
 			#pragma omp critical
 			fprintf(f, "rand_write,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
 		}
@@ -181,11 +180,12 @@ int main(int argc, char **argv){
 			#pragma omp critical
 			cid = sched_getcpu();
 			nid = numa_node_of_cpu(cid);
+			
 			tbegin = tid * tmax;
 			tend = tbegin + tmax;
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+			#endif
 			r = 1;
 			j = 0;
 
@@ -195,12 +195,52 @@ int main(int argc, char **argv){
 				r = v[j];
 			}
 			tfinish = omp_get_wtime();
-
-			fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
-
+			#ifdef DEBUG
+				fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_read: \t%lf\n", tid, cid, nid, tfinish - tstart);
+			#endif
 			#pragma omp critical
+			{
 			fprintf(f, "rand_read,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
+			}
 		}
+        }else if(argv[3][0] == '-' && argv[3][1] == 'r' && argv[3][2] == 'm'){
+                #pragma omp parallel num_threads(nthreads) default(shared) private(tbegin, tend, tid, cid, nid, tstart, tfinish, i, j, r)
+                {
+
+                        tid = omp_get_thread_num();
+                        #pragma omp critical
+                        cid = sched_getcpu();
+                        nid = numa_node_of_cpu(cid);
+			
+			tbegin = tid * tmax;
+			tend = tbegin + tmax;
+                        #ifdef DEBUG
+                                fprintf(stderr, "(t%-2d, c%-2d, n%d) - (%lld, %lld)\n\n", tid,  cid, nid, tbegin, tend);
+                        #endif
+                        r = 1;
+                        j = 0;
+                        tstart = omp_get_wtime();
+                        for(i = 0; i < tmax; i++){
+//				printf("%d, %lld\n", tid, tbegin + j); 
+                                r = v[tbegin + j];
+				j += 270336; j = j % (tend - tbegin);
+                        }
+			tfinish = omp_get_wtime();
+                        #ifdef DEBUG
+                                fprintf(stderr, "(t%-2d, c%-2d, n%d) - rand_read_mod: \t%lf\n", tid, cid, nid, tfinish - tstart);
+                        #endif
+                        #pragma omp critical
+                        {
+                        fprintf(f, "rand_read_mod,%d,%d,%lf\n", nid, numa_node, tfinish - tstart);
+                        }
+                }
+
+	}else{
+		fprintf(stderr, "Avaiable tests are:\n");
+		fprintf(stderr, "\t-sw sequential write\n");
+		fprintf(stderr, "\t-sr sequential read\n");
+		fprintf(stderr, "\t-rw rand write\n");
+		fprintf(stderr, "\t-rr rand read\n\n");
 	}
 
 	fclose(f);
